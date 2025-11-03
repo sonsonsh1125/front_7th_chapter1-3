@@ -19,7 +19,7 @@ export const SUCCESS_MESSAGES = {
   EVENTS_LOADED: '일정 로딩 완료!',
 } as const;
 
-export const useEventOperations = (onSave?: () => void) => {
+export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
   const { enqueueSnackbar } = useSnackbar();
 
@@ -43,8 +43,8 @@ export const useEventOperations = (onSave?: () => void) => {
   ) => {
     try {
       let response;
-      // id가 있으면 업데이트, 없으면 생성
-      const isUpdating = 'id' in eventData && eventData.id;
+      // editing 파라미터를 우선 확인하되, id가 있으면 업데이트로 처리
+      const isUpdating = editing || ('id' in eventData && eventData.id);
 
       if (isUpdating) {
         const updatingEvent = {
