@@ -36,7 +36,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 import RecurringEventDialog from './components/RecurringEventDialog.tsx';
 import { useCalendarView } from './hooks/useCalendarView.ts';
@@ -141,7 +141,6 @@ function App() {
   } = useEventForm();
 
   const { events, saveEvent, deleteEvent, createRepeatEvent, fetchEvents } = useEventOperations(
-    Boolean(editingEvent),
     () => setEditingEvent(null)
   );
 
@@ -164,6 +163,7 @@ function App() {
   const [pendingRecurringDelete, setPendingRecurringDelete] = useState<Event | null>(null);
   const [recurringEditMode, setRecurringEditMode] = useState<boolean | null>(null); // true = single, false = all
   const [recurringDialogMode, setRecurringDialogMode] = useState<'edit' | 'delete'>('edit');
+  const [draggingEvent, setDraggingEvent] = useState<Event | null>(null);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -214,6 +214,44 @@ function App() {
       // Regular event deletion
       deleteEvent(event.id);
     }
+  };
+
+  const handleDragStart = (event: Event) => (e: React.DragEvent) => {
+    setDraggingEvent(event);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (targetDate: Date) => async (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingEvent) return;
+
+    const newDateString = formatDate(targetDate, targetDate.getDate());
+
+    if (draggingEvent.date === newDateString) {
+      setDraggingEvent(null);
+      return;
+    }
+
+    const updatedEvent: Event = {
+      ...draggingEvent,
+      date: newDateString,
+    };
+
+    try {
+      await saveEvent(updatedEvent, { showSuccessMessage: false });
+    } finally {
+      setDraggingEvent(null);
+    }
+  };
+
+  const handleDateCellClick = (targetDate: Date) => {
+    const dateString = formatDate(targetDate, targetDate.getDate());
+    setDate(dateString);
   };
 
   const addOrUpdateEvent = async () => {
@@ -311,6 +349,8 @@ function App() {
                 {weekDates.map((date) => (
                   <TableCell
                     key={date.toISOString()}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop(date)}
                     sx={{
                       height: '120px',
                       verticalAlign: 'top',
@@ -318,9 +358,16 @@ function App() {
                       padding: 1,
                       border: '1px solid #e0e0e0',
                       overflow: 'hidden',
+                      backgroundColor: draggingEvent ? '#f0f0f0' : 'transparent',
+                      transition: 'background-color 0.2s',
                     }}
                   >
-                    <Typography variant="body2" fontWeight="bold">
+                    <Typography
+                      variant="body2"
+                      fontWeight="bold"
+                      onClick={() => handleDateCellClick(date)}
+                      sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                    >
                       {date.getDate()}
                     </Typography>
                     {filteredEvents
@@ -330,13 +377,21 @@ function App() {
                       .map((event) => {
                         const isNotified = notifiedEvents.includes(event.id);
                         const isRepeating = event.repeat.type !== 'none';
+                        const isDragging = draggingEvent?.id === event.id;
 
                         return (
                           <Box
                             key={event.id}
+                            draggable
+                            onDragStart={handleDragStart(event)}
                             sx={{
                               ...eventBoxStyles.common,
                               ...(isNotified ? eventBoxStyles.notified : eventBoxStyles.normal),
+                              cursor: 'move',
+                              opacity: isDragging ? 0.5 : 1,
+                              '&:hover': {
+                                opacity: 0.8,
+                              },
                             }}
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
@@ -344,7 +399,9 @@ function App() {
                               {/* ! TEST CASE */}
                               {isRepeating && (
                                 <Tooltip
-                                  title={`${event.repeat.interval}${getRepeatTypeLabel(event.repeat.type)}마다 반복${
+                                  title={`${event.repeat.interval}${getRepeatTypeLabel(
+                                    event.repeat.type
+                                  )}마다 반복${
                                     event.repeat.endDate ? ` (종료: ${event.repeat.endDate})` : ''
                                   }`}
                                 >
@@ -395,10 +452,15 @@ function App() {
                   {week.map((day, dayIndex) => {
                     const dateString = day ? formatDate(currentDate, day) : '';
                     const holiday = holidays[dateString];
+                    const cellDate = day
+                      ? new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
+                      : null;
 
                     return (
                       <TableCell
                         key={dayIndex}
+                        onDragOver={cellDate ? handleDragOver : undefined}
+                        onDrop={cellDate ? handleDrop(cellDate) : undefined}
                         sx={{
                           height: '120px',
                           verticalAlign: 'top',
@@ -407,11 +469,18 @@ function App() {
                           border: '1px solid #e0e0e0',
                           overflow: 'hidden',
                           position: 'relative',
+                          backgroundColor: draggingEvent && cellDate ? '#f0f0f0' : 'transparent',
+                          transition: 'background-color 0.2s',
                         }}
                       >
                         {day && (
                           <>
-                            <Typography variant="body2" fontWeight="bold">
+                            <Typography
+                              variant="body2"
+                              fontWeight="bold"
+                              onClick={() => cellDate && handleDateCellClick(cellDate)}
+                              sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                            >
                               {day}
                             </Typography>
                             {holiday && (
@@ -422,10 +491,13 @@ function App() {
                             {getEventsForDay(filteredEvents, day).map((event) => {
                               const isNotified = notifiedEvents.includes(event.id);
                               const isRepeating = event.repeat.type !== 'none';
+                              const isDragging = draggingEvent?.id === event.id;
 
                               return (
                                 <Box
                                   key={event.id}
+                                  draggable
+                                  onDragStart={handleDragStart(event)}
                                   sx={{
                                     p: 0.5,
                                     my: 0.5,
@@ -436,6 +508,11 @@ function App() {
                                     minHeight: '18px',
                                     width: '100%',
                                     overflow: 'hidden',
+                                    cursor: 'move',
+                                    opacity: isDragging ? 0.5 : 1,
+                                    '&:hover': {
+                                      opacity: 0.8,
+                                    },
                                   }}
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
@@ -443,7 +520,9 @@ function App() {
                                     {/* ! TEST CASE */}
                                     {isRepeating && (
                                       <Tooltip
-                                        title={`${event.repeat.interval}${getRepeatTypeLabel(event.repeat.type)}마다 반복${
+                                        title={`${event.repeat.interval}${getRepeatTypeLabel(
+                                          event.repeat.type
+                                        )}마다 반복${
                                           event.repeat.endDate
                                             ? ` (종료: ${event.repeat.endDate})`
                                             : ''
@@ -728,7 +807,9 @@ function App() {
                       {notifiedEvents.includes(event.id) && <Notifications color="error" />}
                       {event.repeat.type !== 'none' && (
                         <Tooltip
-                          title={`${event.repeat.interval}${getRepeatTypeLabel(event.repeat.type)}마다 반복${
+                          title={`${event.repeat.interval}${getRepeatTypeLabel(
+                            event.repeat.type
+                          )}마다 반복${
                             event.repeat.endDate ? ` (종료: ${event.repeat.endDate})` : ''
                           }`}
                         >

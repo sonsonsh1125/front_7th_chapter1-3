@@ -12,14 +12,14 @@ const ERROR_MESSAGES = {
 } as const;
 
 // 성공 메시지 상수
-const SUCCESS_MESSAGES = {
+export const SUCCESS_MESSAGES = {
   EVENT_ADDED: '일정이 추가되었습니다',
   EVENT_UPDATED: '일정이 수정되었습니다',
   EVENT_DELETED: '일정이 삭제되었습니다',
   EVENTS_LOADED: '일정 로딩 완료!',
 } as const;
 
-export const useEventOperations = (editing: boolean, onSave?: () => void) => {
+export const useEventOperations = (onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
   const { enqueueSnackbar } = useSnackbar();
 
@@ -37,11 +37,17 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
-  const saveEvent = async (eventData: Event | EventForm) => {
+  const saveEvent = async (
+    eventData: Event | EventForm,
+    options?: { showSuccessMessage?: boolean }
+  ) => {
     try {
       let response;
-      if (editing) {
-        const editingEvent = {
+      // id가 있으면 업데이트, 없으면 생성
+      const isUpdating = 'id' in eventData && eventData.id;
+
+      if (isUpdating) {
+        const updatingEvent = {
           ...eventData,
           // ! TEST CASE
           repeat: eventData.repeat ?? {
@@ -54,7 +60,7 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
         response = await fetch(`/api/events/${(eventData as Event).id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editingEvent),
+          body: JSON.stringify(updatingEvent),
         });
       } else {
         response = await fetch('/api/events', {
@@ -70,9 +76,16 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
 
       await fetchEvents();
       onSave?.();
-      enqueueSnackbar(editing ? SUCCESS_MESSAGES.EVENT_UPDATED : SUCCESS_MESSAGES.EVENT_ADDED, {
-        variant: 'success',
-      });
+
+      // 옵션으로 메시지 표시 여부 제어 (기본값: true)
+      if (options?.showSuccessMessage !== false) {
+        enqueueSnackbar(
+          isUpdating ? SUCCESS_MESSAGES.EVENT_UPDATED : SUCCESS_MESSAGES.EVENT_ADDED,
+          {
+            variant: 'success',
+          }
+        );
+      }
     } catch (error) {
       console.error('Error saving event:', error);
       enqueueSnackbar(ERROR_MESSAGES.SAVE_FAILED, { variant: 'error' });
