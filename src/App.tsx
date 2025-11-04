@@ -389,6 +389,7 @@ function App() {
                     key={date.toISOString()}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop(date)}
+                    onClick={() => handleDateCellClick(date)}
                     sx={{
                       height: '120px',
                       verticalAlign: 'top',
@@ -398,14 +399,13 @@ function App() {
                       overflow: 'hidden',
                       backgroundColor: draggingEvent ? '#f0f0f0' : 'transparent',
                       transition: 'background-color 0.2s',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                      },
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      fontWeight="bold"
-                      onClick={() => handleDateCellClick(date)}
-                      sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
-                    >
+                    <Typography variant="body2" fontWeight="bold">
                       {date.getDate()}
                     </Typography>
                     {filteredEvents
@@ -422,6 +422,7 @@ function App() {
                             key={event.id}
                             draggable
                             onDragStart={handleDragStart(event)}
+                            onClick={(e) => e.stopPropagation()}
                             sx={{
                               ...eventBoxStyles.common,
                               ...(isNotified ? eventBoxStyles.notified : eventBoxStyles.normal),
@@ -499,6 +500,7 @@ function App() {
                         key={dayIndex}
                         onDragOver={cellDate ? handleDragOver : undefined}
                         onDrop={cellDate ? handleDrop(cellDate) : undefined}
+                        onClick={() => cellDate && handleDateCellClick(cellDate)}
                         sx={{
                           height: '120px',
                           verticalAlign: 'top',
@@ -509,16 +511,17 @@ function App() {
                           position: 'relative',
                           backgroundColor: draggingEvent && cellDate ? '#f0f0f0' : 'transparent',
                           transition: 'background-color 0.2s',
+                          cursor: cellDate ? 'pointer' : 'default',
+                          '&:hover': cellDate
+                            ? {
+                                backgroundColor: '#f5f5f5',
+                              }
+                            : {},
                         }}
                       >
                         {day && (
                           <>
-                            <Typography
-                              variant="body2"
-                              fontWeight="bold"
-                              onClick={() => cellDate && handleDateCellClick(cellDate)}
-                              sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
-                            >
+                            <Typography variant="body2" fontWeight="bold">
                               {day}
                             </Typography>
                             {holiday && (
@@ -536,6 +539,7 @@ function App() {
                                   key={event.id}
                                   draggable
                                   onDragStart={handleDragStart(event)}
+                                  onClick={(e) => e.stopPropagation()}
                                   sx={{
                                     p: 0.5,
                                     my: 0.5,
