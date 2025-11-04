@@ -167,6 +167,12 @@ function App() {
   const [recurringDialogMode, setRecurringDialogMode] = useState<'edit' | 'delete'>('edit');
   const [draggingEvent, setDraggingEvent] = useState<Event | null>(null);
   const [pendingDragEvent, setPendingDragEvent] = useState<Event | null>(null);
+  const [isRecurringDragDialogOpen, setIsRecurringDragDialogOpen] = useState(false);
+  const [pendingDragRecurringEvent, setPendingDragRecurringEvent] = useState<{
+    event: Event;
+    newDate: string;
+  } | null>(null);
+  const [pendingRecurringDragMode, setPendingRecurringDragMode] = useState<boolean | null>(null); // true = single, false = all
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -189,6 +195,46 @@ function App() {
       setIsRecurringDialogOpen(false);
       setPendingRecurringDelete(null);
     }
+  };
+
+  const handleRecurringDragConfirm = async (editSingleOnly: boolean) => {
+    if (!pendingDragRecurringEvent) return;
+
+    const { event, newDate } = pendingDragRecurringEvent;
+    const updatedEvent: Event = {
+      ...event,
+      date: newDate,
+    };
+
+    // 겹침 검사
+    const overlapping = findOverlappingEvents(updatedEvent, events);
+    if (overlapping.length > 0) {
+      setOverlappingEvents(overlapping);
+      setPendingDragEvent(updatedEvent);
+      setPendingRecurringDragMode(editSingleOnly);
+      setIsOverlapDialogOpen(true);
+      setIsRecurringDragDialogOpen(false);
+      setPendingDragRecurringEvent(null);
+      return;
+    }
+
+    try {
+      if (editSingleOnly) {
+        // 단일 일정만 이동
+        await saveEvent(updatedEvent, { showSuccessMessage: false });
+        enqueueSnackbar('일정이 이동되었습니다', { variant: 'success' });
+      } else {
+        // 전체 반복 일정 이동
+        await handleRecurringEdit(updatedEvent, false);
+        enqueueSnackbar('반복 일정이 모두 이동되었습니다', { variant: 'success' });
+      }
+    } catch (error) {
+      console.error(error);
+      enqueueSnackbar('일정 이동 실패', { variant: 'error' });
+    }
+
+    setIsRecurringDragDialogOpen(false);
+    setPendingDragRecurringEvent(null);
   };
 
   const isRecurringEvent = (event: Event): boolean => {
@@ -236,6 +282,14 @@ function App() {
     const newDateString = formatDate(targetDate, targetDate.getDate());
 
     if (draggingEvent.date === newDateString) {
+      setDraggingEvent(null);
+      return;
+    }
+
+    // 반복 일정인지 확인
+    if (isRecurringEvent(draggingEvent)) {
+      setPendingDragRecurringEvent({ event: draggingEvent, newDate: newDateString });
+      setIsRecurringDragDialogOpen(true);
       setDraggingEvent(null);
       return;
     }
@@ -923,6 +977,7 @@ function App() {
             onClick={() => {
               setIsOverlapDialogOpen(false);
               setPendingDragEvent(null);
+              setPendingRecurringDragMode(null);
             }}
           >
             취소
@@ -934,7 +989,22 @@ function App() {
 
               // 드래그 앤 드롭으로 이동한 경우
               if (pendingDragEvent) {
-                await saveEvent(pendingDragEvent, { showSuccessMessage: false });
+                // 반복 일정 드래그인 경우
+                if (pendingRecurringDragMode !== null) {
+                  if (pendingRecurringDragMode) {
+                    // 단일 일정만 이동
+                    await saveEvent(pendingDragEvent, { showSuccessMessage: false });
+                    enqueueSnackbar('일정이 이동되었습니다', { variant: 'success' });
+                  } else {
+                    // 전체 반복 일정 이동
+                    await handleRecurringEdit(pendingDragEvent, false);
+                    enqueueSnackbar('반복 일정이 모두 이동되었습니다', { variant: 'success' });
+                  }
+                  setPendingRecurringDragMode(null);
+                } else {
+                  // 일반 드래그
+                  await saveEvent(pendingDragEvent, { showSuccessMessage: false });
+                }
                 setPendingDragEvent(null);
                 return;
               }
@@ -982,6 +1052,17 @@ function App() {
         onConfirm={handleRecurringConfirm}
         event={recurringDialogMode === 'edit' ? pendingRecurringEdit : pendingRecurringDelete}
         mode={recurringDialogMode}
+      />
+
+      <RecurringEventDialog
+        open={isRecurringDragDialogOpen}
+        onClose={() => {
+          setIsRecurringDragDialogOpen(false);
+          setPendingDragRecurringEvent(null);
+        }}
+        onConfirm={handleRecurringDragConfirm}
+        event={pendingDragRecurringEvent?.event || null}
+        mode="move"
       />
 
       {notifications.length > 0 && (

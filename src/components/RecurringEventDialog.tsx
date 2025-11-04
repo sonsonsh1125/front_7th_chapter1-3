@@ -12,7 +12,7 @@ import { Event } from '../types';
 /**
  * Available operation modes for the recurring event dialog
  */
-type DialogMode = 'edit' | 'delete';
+type DialogMode = 'edit' | 'delete' | 'move';
 
 /**
  * Dialog content configuration for different modes
@@ -25,6 +25,10 @@ const DIALOG_CONFIG = {
   delete: {
     title: '반복 일정 삭제',
     message: '해당 일정만 삭제하시겠어요?',
+  },
+  move: {
+    title: '반복 일정 이동',
+    message: '해당 일정만 이동하시겠어요?',
   },
 } as const;
 
