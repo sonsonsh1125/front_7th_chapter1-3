@@ -55,6 +55,7 @@ import {
   getWeeksAtMonth,
 } from './utils/dateUtils.ts';
 import { findOverlappingEvents } from './utils/eventOverlap.ts';
+import { generateRepeatEvents } from './utils/generateRepeatEvents.ts';
 import { getTimeErrorMessage } from './utils/timeValidation.ts';
 
 const categories = ['업무', '개인', '가족', '기타'];
@@ -165,6 +166,7 @@ function App() {
   const [recurringEditMode, setRecurringEditMode] = useState<boolean | null>(null); // true = single, false = all
   const [recurringDialogMode, setRecurringDialogMode] = useState<'edit' | 'delete'>('edit');
   const [draggingEvent, setDraggingEvent] = useState<Event | null>(null);
+  const [pendingDragEvent, setPendingDragEvent] = useState<Event | null>(null);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -243,6 +245,16 @@ function App() {
       date: newDateString,
     };
 
+    // 드래그 앤 드롭 시 일정 겹침 검사
+    const overlapping = findOverlappingEvents(updatedEvent, events);
+    if (overlapping.length > 0) {
+      setOverlappingEvents(overlapping);
+      setPendingDragEvent(updatedEvent);
+      setIsOverlapDialogOpen(true);
+      setDraggingEvent(null);
+      return;
+    }
+
     try {
       await saveEvent(updatedEvent, { showSuccessMessage: false });
     } finally {
@@ -313,7 +325,32 @@ function App() {
 
     // 생성
     if (isRepeating) {
-      // 반복 생성은 반복 일정을 고려하지 않는다.
+      // 반복 일정 생성 시 겹침 검사 수행 (단, 단일 일정과는 충돌하지 않음)
+      const repeatEvents = generateRepeatEvents(eventData);
+      const overlappingInRepeat: Event[] = [];
+
+      // 반복 일정만 필터링 (단일 일정 제외)
+      const recurringEventsOnly = events.filter(
+        (e) => e.repeat.type !== 'none' && e.repeat.interval > 0
+      );
+
+      // 생성될 각 반복 일정에 대해 겹침 검사
+      for (const repeatEvent of repeatEvents) {
+        const overlaps = findOverlappingEvents(repeatEvent, recurringEventsOnly);
+        overlappingInRepeat.push(...overlaps);
+      }
+
+      // 중복 제거
+      const uniqueOverlaps = Array.from(new Set(overlappingInRepeat.map((e) => e.id))).map(
+        (id) => overlappingInRepeat.find((e) => e.id === id)!
+      );
+
+      if (uniqueOverlaps.length > 0) {
+        setOverlappingEvents(uniqueOverlaps);
+        setIsOverlapDialogOpen(true);
+        return;
+      }
+
       await createRepeatEvent(eventData);
       resetForm();
       return;
@@ -878,12 +915,28 @@ function App() {
           <DialogContentText>계속 진행하시겠습니까?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsOverlapDialogOpen(false)}>취소</Button>
           <Button
-            color="error"
             onClick={() => {
               setIsOverlapDialogOpen(false);
-              saveEvent({
+              setPendingDragEvent(null);
+            }}
+          >
+            취소
+          </Button>
+          <Button
+            color="error"
+            onClick={async () => {
+              setIsOverlapDialogOpen(false);
+
+              // 드래그 앤 드롭으로 이동한 경우
+              if (pendingDragEvent) {
+                await saveEvent(pendingDragEvent, { showSuccessMessage: false });
+                setPendingDragEvent(null);
+                return;
+              }
+
+              // 일반적인 일정 추가/수정
+              const eventData = {
                 id: editingEvent ? editingEvent.id : undefined,
                 title,
                 date,
@@ -898,7 +951,16 @@ function App() {
                   endDate: repeatEndDate || undefined,
                 },
                 notificationTime,
-              });
+              };
+
+              // 반복 일정이면 createRepeatEvent, 아니면 saveEvent
+              if (isRepeating && !editingEvent) {
+                await createRepeatEvent(eventData);
+              } else {
+                await saveEvent(eventData);
+              }
+
+              resetForm();
             }}
           >
             계속 진행
