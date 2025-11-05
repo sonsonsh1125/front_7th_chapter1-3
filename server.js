@@ -150,17 +150,50 @@ app.put('/api/recurring-events/:repeatId', async (req, res) => {
     return res.status(404).send('Recurring series not found');
   }
 
+  // 날짜가 변경된 경우, 날짜 오프셋을 계산
+  let dateOffset = 0;
+  if (updateData.date) {
+    // 드래그한 이벤트를 찾아서 오프셋 계산
+    // updateData.date는 드래그한 이벤트의 새 날짜
+    // 드래그한 이벤트를 찾기 위해 updateData에 id가 있다면 사용, 없으면 가장 이른 날짜 사용
+    let targetEvent = seriesEvents[0];
+    if (updateData.id) {
+      const found = seriesEvents.find((e) => e.id === updateData.id);
+      if (found) targetEvent = found;
+    } else {
+      // id가 없으면 가장 이른 날짜의 이벤트를 기준으로 사용
+      targetEvent = seriesEvents.reduce((earliest, current) => {
+        return new Date(current.date) < new Date(earliest.date) ? current : earliest;
+      });
+    }
+    const oldDate = new Date(targetEvent.date);
+    const newDate = new Date(updateData.date);
+    dateOffset = Math.round((newDate.getTime() - oldDate.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
   const newEvents = events.events.map((event) => {
     if (event.repeat.id === repeatId) {
-      return {
+      let updatedEvent = {
         ...event,
-        title: updateData.title || event.title,
-        description: updateData.description || event.description,
-        location: updateData.location || event.location,
-        category: updateData.category || event.category,
-        notificationTime: updateData.notificationTime || event.notificationTime,
+        title: updateData.title !== undefined ? updateData.title : event.title,
+        description: updateData.description !== undefined ? updateData.description : event.description,
+        location: updateData.location !== undefined ? updateData.location : event.location,
+        category: updateData.category !== undefined ? updateData.category : event.category,
+        notificationTime: updateData.notificationTime !== undefined ? updateData.notificationTime : event.notificationTime,
         repeat: updateData.repeat ? { ...event.repeat, ...updateData.repeat } : event.repeat,
       };
+
+      // 날짜가 변경된 경우, 오프셋을 적용하여 날짜 업데이트
+      if (dateOffset !== 0) {
+        const eventDate = new Date(event.date);
+        eventDate.setDate(eventDate.getDate() + dateOffset);
+        const year = eventDate.getFullYear();
+        const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const day = String(eventDate.getDate()).padStart(2, '0');
+        updatedEvent.date = `${year}-${month}-${day}`;
+      }
+
+      return updatedEvent;
     }
     return event;
   });

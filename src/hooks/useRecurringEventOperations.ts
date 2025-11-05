@@ -115,6 +115,29 @@ export const useRecurringEventOperations = (
   });
 
   /**
+   * Calculates the date offset in days between two dates
+   */
+  const calculateDateOffset = (oldDate: string, newDate: string): number => {
+    const old = new Date(oldDate);
+    const new_ = new Date(newDate);
+    const diffTime = new_.getTime() - old.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  /**
+   * Applies date offset to a date string
+   */
+  const applyDateOffset = (date: string, offsetDays: number): string => {
+    const dateObj = new Date(date);
+    dateObj.setDate(dateObj.getDate() + offsetDays);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+
+  /**
    * Prefers recurring API when repeatId is available, falls back to individual updates
    */
   const updateRecurringSeries = async (
@@ -123,19 +146,71 @@ export const useRecurringEventOperations = (
     relatedEvents: Event[]
   ): Promise<boolean> => {
     const repeatId = originalEvent.repeat.id;
+    const dateChanged = originalEvent.date !== updatedEvent.date;
 
     if (repeatId) {
-      const updateData = {
+      const updateData: Partial<Event> = {
         title: updatedEvent.title,
         description: updatedEvent.description,
         location: updatedEvent.location,
         category: updatedEvent.category,
         notificationTime: updatedEvent.notificationTime,
       };
+
+      // 날짜가 변경된 경우, 서버에서 처리할 수 있도록 date와 id를 포함
+      if (dateChanged) {
+        updateData.date = updatedEvent.date;
+        updateData.id = originalEvent.id; // 드래그한 이벤트의 id를 전달하여 서버에서 기준 이벤트를 찾을 수 있도록 함
+      }
+
       return await updateRecurringEventOnServer(repeatId, updateData);
     } else {
+      // repeatId가 없는 경우, 각 이벤트를 개별적으로 업데이트
+      let eventsToUpdate = relatedEvents;
+
+      // 날짜가 변경된 경우, 날짜 오프셋을 계산하여 모든 관련 이벤트에 적용
+      if (dateChanged) {
+        // 드래그한 이벤트의 원래 날짜와 새 날짜의 차이를 계산
+        const originalOffset = calculateDateOffset(originalEvent.date, updatedEvent.date);
+
+        eventsToUpdate = relatedEvents.map((event) => {
+          // 각 이벤트에 동일한 오프셋 적용
+          const newDate = applyDateOffset(event.date, originalOffset);
+          return {
+            ...event,
+            title: updatedEvent.title,
+            description: updatedEvent.description,
+            location: updatedEvent.location,
+            category: updatedEvent.category,
+            notificationTime: updatedEvent.notificationTime,
+            date: newDate,
+          };
+        });
+
+        // 원래 이벤트도 업데이트
+        const updatedOriginalEvent = {
+          ...updatedEvent,
+          title: updatedEvent.title,
+          description: updatedEvent.description,
+          location: updatedEvent.location,
+          category: updatedEvent.category,
+          notificationTime: updatedEvent.notificationTime,
+        };
+        eventsToUpdate.push(updatedOriginalEvent);
+      } else {
+        // 날짜가 변경되지 않은 경우, 기존 로직 사용
+        eventsToUpdate = relatedEvents.map((event) => ({
+          ...event,
+          title: updatedEvent.title,
+          description: updatedEvent.description,
+          location: updatedEvent.location,
+          category: updatedEvent.category,
+          notificationTime: updatedEvent.notificationTime,
+        }));
+      }
+
       const results = await Promise.all(
-        relatedEvents.map((event) => updateEventOnServer({ ...event, title: updatedEvent.title }))
+        eventsToUpdate.map((event) => updateEventOnServer(event))
       );
       return results.every((result) => result);
     }
