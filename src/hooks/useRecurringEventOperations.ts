@@ -32,7 +32,7 @@ const DEFAULT_REPEAT_CONFIG = {
  */
 export const useRecurringEventOperations = (
   events: Event[],
-  updateEvents: (events: Event[]) => void
+  updateEvents: (_events: Event[]) => void
 ) => {
   const isRecurringEvent = (event: Event): boolean => {
     return event.repeat.type !== 'none' && event.repeat.interval > 0;
@@ -136,7 +136,6 @@ export const useRecurringEventOperations = (
     return `${year}-${month}-${day}`;
   };
 
-
   /**
    * Prefers recurring API when repeatId is available, falls back to individual updates
    */
@@ -209,9 +208,7 @@ export const useRecurringEventOperations = (
         }));
       }
 
-      const results = await Promise.all(
-        eventsToUpdate.map((event) => updateEventOnServer(event))
-      );
+      const results = await Promise.all(eventsToUpdate.map((event) => updateEventOnServer(event)));
       return results.every((result) => result);
     }
   };
