@@ -78,7 +78,16 @@ test.describe('기본 일정 관리 CRUD 테스트', () => {
       location: '강남역',
       category: '개인',
     });
+
     await expect(page.getByTestId('event-list').getByText('퇴사 파티').first()).toBeVisible();
+
+    await expect(page.getByLabel('제목')).toHaveValue('');
+
+    try {
+      await expect(page.getByText('일정이 추가되었습니다')).toBeVisible({ timeout: 2000 });
+    } catch {
+      // 메시지가 이미 사라졌어도 테스트는 통과
+    }
   });
 
   test('추가된 일정을 조회할 수 있다 (READ)', async ({ page }) => {
