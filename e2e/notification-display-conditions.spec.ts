@@ -36,18 +36,18 @@ const createEvent = async (page: Page, params: CreateEventParams) => {
     await expect(notificationSelect).toBeVisible({ timeout: 5000 });
     await notificationSelect.click();
 
-    const notificationLabel =
-      params.notificationTime === 1
-        ? '1분 전'
-        : params.notificationTime === 10
-        ? '10분 전'
-        : params.notificationTime === 60
-        ? '1시간 전'
-        : params.notificationTime === 120
-        ? '2시간 전'
-        : params.notificationTime === 1440
-        ? '1일 전'
-        : '1분 전';
+    let notificationLabel = '1분 전';
+    if (params.notificationTime === 1) {
+      notificationLabel = '1분 전';
+    } else if (params.notificationTime === 10) {
+      notificationLabel = '10분 전';
+    } else if (params.notificationTime === 60) {
+      notificationLabel = '1시간 전';
+    } else if (params.notificationTime === 120) {
+      notificationLabel = '2시간 전';
+    } else if (params.notificationTime === 1440) {
+      notificationLabel = '1일 전';
+    }
 
     // 옵션이 나타날 때까지 대기
     await page.waitForTimeout(300);
