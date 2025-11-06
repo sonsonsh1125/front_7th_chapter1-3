@@ -8,3 +8,4 @@ node_modules
 /.local-browsers/
 /allure-results/
 /.allure/
+/storybook-static/

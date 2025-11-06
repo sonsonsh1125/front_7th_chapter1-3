@@ -120,15 +120,17 @@ test.describe('검색 및 필터링 CRUD 테스트', () => {
       category: '업무',
     });
 
-    // 모든 이벤트가 생성되었는지 확인
+    // 모든 이벤트가 생성되었는지 확인 (재시도 로직 포함)
     const eventList = page.getByTestId('event-list');
     await expect(async () => {
+      // 리스트가 로드될 때까지 대기
+      await eventList.waitFor({ state: 'attached', timeout: 5000 });
       const count = await eventList
         .locator('div')
         .filter({ hasText: /팀 회의|점심 약속|프로젝트 리뷰/ })
         .count();
       expect(count).toBeGreaterThanOrEqual(3);
-    }).toPass({ timeout: 10000 });
+    }).toPass({ timeout: 15000, intervals: [500] });
 
     // 검색어 입력 (CREATE)
     // '팀'만 검색하여 '팀 회의'만 필터링 (부분 일치 검색이므로 '회의'로 검색하면 둘 다 나타남)
@@ -137,10 +139,15 @@ test.describe('검색 및 필터링 CRUD 테스트', () => {
 
     // 필터링된 결과가 생성되었는지 확인
     await expect(async () => {
-      // 검색 결과가 업데이트될 때까지 대기
-      await page.waitForTimeout(500);
+      // 검색 결과가 업데이트될 때까지 충분히 대기
+      await page.waitForTimeout(1000);
 
       // '팀 회의'가 보이는지 확인
+      const teamMeetingCount = await eventList.getByText('팀 회의').count();
+      if (teamMeetingCount === 0) {
+        throw new Error('팀 회의가 리스트에 없습니다');
+      }
+
       const visibleEvents = eventList.getByText('팀 회의');
       const isVisible = await visibleEvents
         .first()
@@ -151,10 +158,13 @@ test.describe('검색 및 필터링 CRUD 테스트', () => {
       }
 
       // 다른 이벤트는 보이지 않아야 함
-      const lunchEvent = eventList.getByText('점심 약속');
-      const isLunchVisible = await lunchEvent.isVisible({ timeout: 1000 }).catch(() => false);
-      if (isLunchVisible) {
-        throw new Error('점심 약속이 보입니다');
+      const lunchEventCount = await eventList.getByText('점심 약속').count();
+      if (lunchEventCount > 0) {
+        const lunchEvent = eventList.getByText('점심 약속').first();
+        const isLunchVisible = await lunchEvent.isVisible({ timeout: 1000 }).catch(() => false);
+        if (isLunchVisible) {
+          throw new Error('점심 약속이 보입니다');
+        }
       }
 
       expect(isVisible).toBe(true);
