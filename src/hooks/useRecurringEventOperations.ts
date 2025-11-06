@@ -32,6 +32,7 @@ const DEFAULT_REPEAT_CONFIG = {
  */
 export const useRecurringEventOperations = (
   events: Event[],
+  // eslint-disable-next-line no-unused-vars
   updateEvents: (_events: Event[]) => void
 ) => {
   const isRecurringEvent = (event: Event): boolean => {
