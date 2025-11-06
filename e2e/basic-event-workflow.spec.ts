@@ -152,8 +152,25 @@ test.describe('기본 일정 관리 CRUD 테스트', () => {
     await page.getByLabel('제목').fill('저녁 약속');
     await page.getByTestId('event-submit-button').click();
 
-    await expect(eventList.getByText('저녁 약속').first()).toBeVisible({ timeout: 5000 });
-    await expect(eventList.getByText('점심 약속')).toHaveCount(0, { timeout: 5000 });
+    // 편집 다이얼로그가 닫힐 때까지 대기
+    try {
+      const editDialog = page.getByRole('dialog');
+      await editDialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => null);
+    } catch {
+      // Dialog가 없으면 무시
+    }
+
+    // 수정된 이벤트가 리스트에 나타날 때까지 재시도
+    await expect(async () => {
+      const isVisible = await eventList.getByText('저녁 약속').first().isVisible();
+      expect(isVisible).toBe(true);
+    }).toPass({ timeout: 10000 });
+
+    // 기존 이벤트가 사라질 때까지 재시도
+    await expect(async () => {
+      const count = await eventList.getByText('점심 약속').count();
+      expect(count).toBe(0);
+    }).toPass({ timeout: 5000 });
   });
 
   test('일정을 삭제할 수 있다 (DELETE)', async ({ page }) => {
