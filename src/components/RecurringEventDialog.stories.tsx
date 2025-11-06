@@ -87,4 +87,3 @@ export const WithoutEvent: Story = {
     event: null,
   },
 };
-
