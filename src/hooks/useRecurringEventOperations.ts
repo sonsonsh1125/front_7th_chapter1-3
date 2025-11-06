@@ -154,6 +154,8 @@ export const useRecurringEventOperations = (
         location: updatedEvent.location,
         category: updatedEvent.category,
         notificationTime: updatedEvent.notificationTime,
+        startTime: updatedEvent.startTime,
+        endTime: updatedEvent.endTime,
       };
 
       // 날짜가 변경된 경우, 서버에서 처리할 수 있도록 date와 id를 포함

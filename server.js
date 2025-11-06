@@ -175,11 +175,13 @@ app.put('/api/recurring-events/:repeatId', async (req, res) => {
     if (event.repeat.id === repeatId) {
       let updatedEvent = {
         ...event,
-        title: updateData.title !== undefined ? updateData.title : event.title,
-        description: updateData.description !== undefined ? updateData.description : event.description,
-        location: updateData.location !== undefined ? updateData.location : event.location,
-        category: updateData.category !== undefined ? updateData.category : event.category,
-        notificationTime: updateData.notificationTime !== undefined ? updateData.notificationTime : event.notificationTime,
+        title: updateData.title || event.title,
+        description: updateData.description || event.description,
+        location: updateData.location || event.location,
+        category: updateData.category || event.category,
+        notificationTime: updateData.notificationTime || event.notificationTime,
+        startTime: updateData.startTime || event.startTime,
+        endTime: updateData.endTime || event.endTime,
         repeat: updateData.repeat ? { ...event.repeat, ...updateData.repeat } : event.repeat,
       };
 
