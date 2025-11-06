@@ -150,7 +150,8 @@ const notifiedAndRepeatingEvent: Event = {
 
 const longTitleEvent: Event = {
   id: '5',
-  title: '매우 긴 제목을 가진 일정입니다. 이 일정은 텍스트 오버플로우 처리를 테스트하기 위한 것입니다.',
+  title:
+    '매우 긴 제목을 가진 일정입니다. 이 일정은 텍스트 오버플로우 처리를 테스트하기 위한 것입니다.',
   date: '2024-01-15',
   startTime: '11:00',
   endTime: '12:00',
@@ -163,7 +164,8 @@ const longTitleEvent: Event = {
 
 const longTitleNotifiedEvent: Event = {
   id: '6',
-  title: '매우 긴 제목을 가진 알림 일정입니다. 이 일정은 텍스트 오버플로우와 알림 상태를 함께 테스트합니다.',
+  title:
+    '매우 긴 제목을 가진 알림 일정입니다. 이 일정은 텍스트 오버플로우와 알림 상태를 함께 테스트합니다.',
   date: '2024-01-15',
   startTime: '13:00',
   endTime: '14:00',
@@ -418,4 +420,3 @@ export const MultipleEventsInCell: Story = {
     </Box>
   ),
 };
-
