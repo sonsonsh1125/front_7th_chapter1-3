@@ -314,7 +314,8 @@ const mediumTitleEvent: Event = {
 
 const longTitleEvent: Event = {
   id: '3',
-  title: '매우 긴 제목을 가진 일정입니다. 이 일정은 텍스트 오버플로우 처리를 테스트하기 위한 것입니다.',
+  title:
+    '매우 긴 제목을 가진 일정입니다. 이 일정은 텍스트 오버플로우 처리를 테스트하기 위한 것입니다.',
   date: '2024-01-15',
   startTime: '16:00',
   endTime: '17:00',
@@ -405,15 +406,11 @@ const multipleLongEvents: Event[] = [
 
 // Week View 스토리들
 export const WeekViewShortText: Story = {
-  render: () => (
-    <WeekView currentDate={new Date(2024, 0, 15)} events={[shortTitleEvent]} />
-  ),
+  render: () => <WeekView currentDate={new Date(2024, 0, 15)} events={[shortTitleEvent]} />,
 };
 
 export const WeekViewMediumText: Story = {
-  render: () => (
-    <WeekView currentDate={new Date(2024, 0, 15)} events={[mediumTitleEvent]} />
-  ),
+  render: () => <WeekView currentDate={new Date(2024, 0, 15)} events={[mediumTitleEvent]} />,
 };
 
 export const WeekViewLongText: Story = {
@@ -421,9 +418,7 @@ export const WeekViewLongText: Story = {
 };
 
 export const WeekViewVeryLongText: Story = {
-  render: () => (
-    <WeekView currentDate={new Date(2024, 0, 15)} events={[veryLongTitleEvent]} />
-  ),
+  render: () => <WeekView currentDate={new Date(2024, 0, 15)} events={[veryLongTitleEvent]} />,
 };
 
 export const WeekViewLongTextWithIcons: Story = {
@@ -437,22 +432,16 @@ export const WeekViewLongTextWithIcons: Story = {
 };
 
 export const WeekViewMultipleLongText: Story = {
-  render: () => (
-    <WeekView currentDate={new Date(2024, 0, 15)} events={multipleLongEvents} />
-  ),
+  render: () => <WeekView currentDate={new Date(2024, 0, 15)} events={multipleLongEvents} />,
 };
 
 // Month View 스토리들
 export const MonthViewShortText: Story = {
-  render: () => (
-    <MonthView currentDate={new Date(2024, 0, 1)} events={[shortTitleEvent]} />
-  ),
+  render: () => <MonthView currentDate={new Date(2024, 0, 1)} events={[shortTitleEvent]} />,
 };
 
 export const MonthViewMediumText: Story = {
-  render: () => (
-    <MonthView currentDate={new Date(2024, 0, 1)} events={[mediumTitleEvent]} />
-  ),
+  render: () => <MonthView currentDate={new Date(2024, 0, 1)} events={[mediumTitleEvent]} />,
 };
 
 export const MonthViewLongText: Story = {
@@ -460,9 +449,7 @@ export const MonthViewLongText: Story = {
 };
 
 export const MonthViewVeryLongText: Story = {
-  render: () => (
-    <MonthView currentDate={new Date(2024, 0, 1)} events={[veryLongTitleEvent]} />
-  ),
+  render: () => <MonthView currentDate={new Date(2024, 0, 1)} events={[veryLongTitleEvent]} />,
 };
 
 export const MonthViewLongTextWithIcons: Story = {
@@ -476,9 +463,7 @@ export const MonthViewLongTextWithIcons: Story = {
 };
 
 export const MonthViewMultipleLongText: Story = {
-  render: () => (
-    <MonthView currentDate={new Date(2024, 0, 1)} events={multipleLongEvents} />
-  ),
+  render: () => <MonthView currentDate={new Date(2024, 0, 1)} events={multipleLongEvents} />,
 };
 
 // 텍스트 길이 비교
@@ -593,4 +578,3 @@ export const WeekVsMonthTextHandling: Story = {
     </Stack>
   ),
 };
-
