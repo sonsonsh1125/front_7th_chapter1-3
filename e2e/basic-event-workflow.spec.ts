@@ -151,8 +151,9 @@ test.describe('기본 일정 관리 CRUD 테스트', () => {
     await expect(page.getByLabel('제목')).toHaveValue('점심 약속');
     await page.getByLabel('제목').fill('저녁 약속');
     await page.getByTestId('event-submit-button').click();
-    await expect(eventList.getByText('저녁 약속').first()).toBeVisible();
-    await expect(eventList.getByText('점심 약속')).toHaveCount(0);
+
+    await expect(eventList.getByText('저녁 약속').first()).toBeVisible({ timeout: 5000 });
+    await expect(eventList.getByText('점심 약속')).toHaveCount(0, { timeout: 5000 });
   });
 
   test('일정을 삭제할 수 있다 (DELETE)', async ({ page }) => {
