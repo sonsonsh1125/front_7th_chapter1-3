@@ -1,6 +1,6 @@
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { SnackbarProvider } from 'notistack';
 import { ReactElement } from 'react';
@@ -27,6 +27,24 @@ const setup = (element: ReactElement) => {
     ),
     user,
   };
+};
+
+const createMockDataTransfer = () => {
+  const data: Record<string, string> = {};
+  return {
+    dropEffect: 'move',
+    effectAllowed: 'all',
+    files: [],
+    items: [],
+    types: [],
+    setData: (type: string, value: string) => {
+      data[type] = value;
+    },
+    getData: (type: string) => data[type] ?? '',
+    clearData: () => {
+      Object.keys(data).forEach((key) => delete data[key]);
+    },
+  } as DataTransfer;
 };
 
 describe('반복 일정 워크플로우 통합 테스트', () => {
@@ -184,8 +202,125 @@ describe('반복 일정 워크플로우 통합 테스트', () => {
     const eventList = within(screen.getByTestId('event-list'));
     expect(eventList.getAllByText('전체 변경된 회의')).toHaveLength(2);
   });
+});
 
-  describe('반복 일정 삭제 워크플로우 (P2 테스트)', () => {
+describe('드래그 앤 드롭 상호작용', () => {
+  it('비반복 일정을 드래그하여 다른 날짜로 이동하면 새로운 날짜가 저장된다', async () => {
+    setupMockHandlerUpdating([
+      {
+        id: '1',
+        title: '드래그 일정',
+        date: '2025-10-15',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '드래그 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'none', interval: 0 },
+        notificationTime: 10,
+      },
+    ]);
+
+    const { user } = setup(<App />);
+    await screen.findByText('일정 로딩 완료!');
+
+    const monthView = await screen.findByTestId('month-view');
+    const draggableEvent = within(monthView)
+      .getByText('드래그 일정')
+      .closest('[draggable="true"]');
+
+    expect(draggableEvent).not.toBeNull();
+
+    const targetCell = within(monthView)
+      .getAllByRole('cell')
+      .find((cell) => within(cell).queryByText('16'));
+
+    expect(targetCell).toBeDefined();
+
+    const dataTransfer = createMockDataTransfer();
+
+    fireEvent.dragStart(draggableEvent as Element, { dataTransfer });
+    fireEvent.dragEnter(targetCell as Element, { dataTransfer });
+    fireEvent.dragOver(targetCell as Element, { dataTransfer });
+    fireEvent.drop(targetCell as Element, { dataTransfer });
+
+    const eventList = within(await screen.findByTestId('event-list'));
+
+    await waitFor(() => {
+      expect(eventList.getByText('2025-10-16')).toBeInTheDocument();
+      expect(eventList.queryByText('2025-10-15')).not.toBeInTheDocument();
+    });
+  });
+
+  it('반복 일정을 드래그 후 단일 이동을 선택하면 해당 인스턴스만 이동된다', async () => {
+    setupMockHandlerUpdating([
+      {
+        id: '1',
+        title: '반복 일정',
+        date: '2025-10-15',
+        startTime: '14:00',
+        endTime: '15:00',
+        description: '반복 일정 이동 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'daily', interval: 1, endDate: '2025-10-18' },
+        notificationTime: 10,
+      },
+      {
+        id: '2',
+        title: '반복 일정',
+        date: '2025-10-16',
+        startTime: '14:00',
+        endTime: '15:00',
+        description: '반복 일정 이동 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'daily', interval: 1, endDate: '2025-10-18' },
+        notificationTime: 10,
+      },
+    ]);
+
+    const { user } = setup(<App />);
+    await screen.findByText('일정 로딩 완료!');
+
+    const monthView = await screen.findByTestId('month-view');
+    const draggableEvent = within(monthView)
+      .getByText('반복 일정')
+      .closest('[draggable="true"]');
+
+    expect(draggableEvent).not.toBeNull();
+
+    const targetCell = within(monthView)
+      .getAllByRole('cell')
+      .find((cell) => within(cell).queryByText('17'));
+
+    expect(targetCell).toBeDefined();
+
+    const dataTransfer = createMockDataTransfer();
+
+    fireEvent.dragStart(draggableEvent as Element, { dataTransfer });
+    fireEvent.dragEnter(targetCell as Element, { dataTransfer });
+    fireEvent.dragOver(targetCell as Element, { dataTransfer });
+    fireEvent.drop(targetCell as Element, { dataTransfer });
+
+    expect(await screen.findByText('반복 일정 이동')).toBeInTheDocument();
+    expect(screen.getByText('해당 일정만 이동하시겠어요?')).toBeInTheDocument();
+
+    await user.click(screen.getByText('예'));
+
+    await screen.findByText('일정이 이동되었습니다');
+
+    const eventList = within(await screen.findByTestId('event-list'));
+
+    await waitFor(() => {
+      expect(eventList.getByText('2025-10-17')).toBeInTheDocument();
+      expect(eventList.getByText('2025-10-16')).toBeInTheDocument();
+      expect(eventList.queryByText('2025-10-15')).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('반복 일정 삭제 워크플로우 (P2 테스트)', () => {
     it('반복 일정 삭제 시 삭제 다이얼로그가 나타난다', async () => {
       setupMockHandlerRecurringListDelete([
         {

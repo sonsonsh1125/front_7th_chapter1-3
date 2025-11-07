@@ -4,11 +4,12 @@ import { http, HttpResponse } from 'msw';
 import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
+  setupMockHandlerListCreation,
   setupMockHandlerUpdating,
 } from '../../__mocks__/handlersUtils.ts';
 import { useEventOperations } from '../../hooks/useEventOperations.ts';
 import { server } from '../../setupTests.ts';
-import { Event } from '../../types.ts';
+import { Event, EventForm } from '../../types.ts';
 
 const enqueueSnackbarFn = vi.fn();
 
@@ -20,6 +21,10 @@ vi.mock('notistack', async () => {
       enqueueSnackbar: enqueueSnackbarFn,
     }),
   };
+});
+
+beforeEach(() => {
+  enqueueSnackbarFn.mockClear();
 });
 
 it('저장되어있는 초기 이벤트 데이터를 적절하게 불러온다', async () => {
@@ -67,6 +72,101 @@ it('정의된 이벤트 정보를 기준으로 적절하게 저장이 된다', a
   });
 
   expect(result.current.events).toEqual([{ ...newEvent, id: '1' }]);
+});
+
+it('반복 일정 생성 성공 시 이벤트가 재로딩되고 성공 토스트가 노출된다', async () => {
+  setupMockHandlerListCreation();
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  await act(() => Promise.resolve(null));
+  enqueueSnackbarFn.mockClear();
+
+  const repeatEvent: EventForm = {
+    title: '반복 회의',
+    date: '2025-10-15',
+    startTime: '09:00',
+    endTime: '10:00',
+    description: '반복 일정 생성',
+    location: '회의실 A',
+    category: '업무',
+    repeat: { type: 'daily', interval: 1, endDate: '2025-10-16' },
+    notificationTime: 10,
+  };
+
+  await act(async () => {
+    await result.current.createRepeatEvent(repeatEvent);
+  });
+
+  await act(() => Promise.resolve(null));
+
+  expect(result.current.events).toHaveLength(2);
+  expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정이 추가되었습니다', {
+    variant: 'success',
+  });
+});
+
+it("반복 일정 생성 실패 시 '일정 저장 실패' 토스트가 노출된다", async () => {
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: [] })),
+    http.post('/api/events-list', () => new HttpResponse(null, { status: 500 }))
+  );
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  await act(() => Promise.resolve(null));
+  enqueueSnackbarFn.mockClear();
+
+  const repeatEvent: EventForm = {
+    title: '실패하는 반복 회의',
+    date: '2025-10-15',
+    startTime: '09:00',
+    endTime: '10:00',
+    description: '반복 일정 실패',
+    location: '회의실 B',
+    category: '업무',
+    repeat: { type: 'daily', interval: 1, endDate: '2025-10-16' },
+    notificationTime: 10,
+  };
+
+  await act(async () => {
+    await result.current.createRepeatEvent(repeatEvent);
+  });
+
+  expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 저장 실패', { variant: 'error' });
+  expect(result.current.events).toHaveLength(0);
+});
+
+it('성공 저장이라도 showSuccessMessage 옵션이 false면 성공 토스트를 생략한다', async () => {
+  setupMockHandlerCreation();
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  await act(() => Promise.resolve(null));
+  enqueueSnackbarFn.mockClear();
+
+  const newEvent = {
+    title: '토스트 미표시 이벤트',
+    date: '2025-10-18',
+    startTime: '11:00',
+    endTime: '12:00',
+    description: '토스트 생략',
+    location: '회의실 C',
+    category: '업무',
+    repeat: { type: 'none', interval: 0 },
+    notificationTime: 10,
+  };
+
+  await act(async () => {
+    await result.current.saveEvent(newEvent, { showSuccessMessage: false });
+  });
+
+  await act(() => Promise.resolve(null));
+
+  expect(result.current.events).toEqual([{ ...newEvent, id: '1' }]);
+  expect(enqueueSnackbarFn).not.toHaveBeenCalledWith('일정이 추가되었습니다', {
+    variant: 'success',
+  });
 });
 
 it("새로 정의된 'title', 'endTime' 기준으로 적절하게 일정이 업데이트 된다", async () => {
