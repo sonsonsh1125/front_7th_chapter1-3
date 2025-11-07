@@ -4,8 +4,11 @@ import { ChangeEvent } from 'react';
 import { useEventForm } from '../../hooks/useEventForm.ts';
 import { Event } from '../../types.ts';
 
-const createChangeEvent = (value: string) =>
-  ({ target: { value } } as unknown as ChangeEvent<HTMLInputElement>);
+const createChangeEvent = (value: string) => {
+  return {
+    target: { value },
+  } as unknown as ChangeEvent<HTMLInputElement>;
+};
 
 describe('useEventForm', () => {
   it('시간 변경 시 검증 에러 메시지를 즉시 반영한다', () => {
@@ -35,12 +38,8 @@ describe('useEventForm', () => {
     });
 
     expect(result.current.endTime).toBe('09:00');
-    expect(result.current.startTimeError).toBe(
-      '시작 시간은 종료 시간보다 빨라야 합니다.'
-    );
-    expect(result.current.endTimeError).toBe(
-      '종료 시간은 시작 시간보다 늦어야 합니다.'
-    );
+    expect(result.current.startTimeError).toBe('시작 시간은 종료 시간보다 빨라야 합니다.');
+    expect(result.current.endTimeError).toBe('종료 시간은 시작 시간보다 늦어야 합니다.');
   });
 
   it('resetForm 호출 시 모든 필드를 기본값으로 되돌린다', () => {
@@ -114,4 +113,3 @@ describe('useEventForm', () => {
     expect(result.current.notificationTime).toBe(120);
   });
 });
-
