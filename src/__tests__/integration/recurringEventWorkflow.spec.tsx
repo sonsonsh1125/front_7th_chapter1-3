@@ -221,7 +221,7 @@ describe('반복 일정 워크플로우 통합 테스트', () => {
         },
       ]);
 
-      const { user } = setup(<App />);
+      setup(<App />);
       await screen.findByText('일정 로딩 완료!');
 
       const monthView = await screen.findByTestId('month-view');
