@@ -248,11 +248,13 @@ describe('반복 일정 워크플로우 통합 테스트', () => {
       fireEvent.drop(targetCell as Element, { dataTransfer });
 
       await waitFor(() => {
-        expect(within(targetCell as HTMLElement).getByText('드래그 일정')).toBeInTheDocument();
+        const movedEvent = within(targetCell as HTMLElement).queryByText('드래그 일정');
+        expect(movedEvent).toBeInTheDocument();
       });
 
       await waitFor(() => {
-        expect(within(sourceCell as HTMLElement).queryByText('드래그 일정')).not.toBeInTheDocument();
+        const originalEvent = within(sourceCell as HTMLElement).queryByText('드래그 일정');
+        expect(originalEvent).not.toBeInTheDocument();
       });
     });
 
@@ -317,11 +319,13 @@ describe('반복 일정 워크플로우 통합 테스트', () => {
       await screen.findByText('일정이 이동되었습니다');
 
       await waitFor(() => {
-        expect(within(targetCell as HTMLElement).getByText('반복 일정')).toBeInTheDocument();
+        const movedEvent = within(targetCell as HTMLElement).queryByText('반복 일정');
+        expect(movedEvent).toBeInTheDocument();
       });
 
       await waitFor(() => {
-        expect(within(sourceCell as HTMLElement).queryByText('반복 일정')).not.toBeInTheDocument();
+        const originalEvent = within(sourceCell as HTMLElement).queryByText('반복 일정');
+        expect(originalEvent).not.toBeInTheDocument();
       });
     });
   });
