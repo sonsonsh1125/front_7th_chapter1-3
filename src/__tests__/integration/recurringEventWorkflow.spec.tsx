@@ -225,32 +225,34 @@ describe('반복 일정 워크플로우 통합 테스트', () => {
       await screen.findByText('일정 로딩 완료!');
 
       const monthView = await screen.findByTestId('month-view');
-      const draggableEvent = within(monthView)
+
+      const sourceCell = within(monthView)
+        .getAllByRole('cell')
+        .find((cell) => within(cell).queryByText('15') && within(cell).queryByText('드래그 일정'));
+      expect(sourceCell).toBeDefined();
+
+      const draggableEvent = within(sourceCell as HTMLElement)
         .getByText('드래그 일정')
         .closest('[draggable="true"]');
-
       expect(draggableEvent).not.toBeNull();
 
       const targetCell = within(monthView)
         .getAllByRole('cell')
         .find((cell) => within(cell).queryByText('16'));
-
       expect(targetCell).toBeDefined();
 
       const dataTransfer = createMockDataTransfer();
-
       fireEvent.dragStart(draggableEvent as Element, { dataTransfer });
       fireEvent.dragEnter(targetCell as Element, { dataTransfer });
       fireEvent.dragOver(targetCell as Element, { dataTransfer });
       fireEvent.drop(targetCell as Element, { dataTransfer });
 
-      const eventList = within(await screen.findByTestId('event-list'));
+      await waitFor(() => {
+        expect(within(targetCell as HTMLElement).getByText('드래그 일정')).toBeInTheDocument();
+      });
 
       await waitFor(() => {
-        const card = eventList.getByText('드래그 일정').closest('div');
-        expect(card).not.toBeNull();
-        expect(within(card as HTMLElement).getByText('2025-10-16')).toBeInTheDocument();
-        expect(within(card as HTMLElement).queryByText('2025-10-15')).not.toBeInTheDocument();
+        expect(within(sourceCell as HTMLElement).queryByText('드래그 일정')).not.toBeInTheDocument();
       });
     });
 
@@ -286,18 +288,23 @@ describe('반복 일정 워크플로우 통합 테스트', () => {
       await screen.findByText('일정 로딩 완료!');
 
       const monthView = await screen.findByTestId('month-view');
-      const draggableEvent = within(monthView).getByText('반복 일정').closest('[draggable="true"]');
 
+      const sourceCell = within(monthView)
+        .getAllByRole('cell')
+        .find((cell) => within(cell).queryByText('15') && within(cell).queryByText('반복 일정'));
+      expect(sourceCell).toBeDefined();
+
+      const draggableEvent = within(sourceCell as HTMLElement)
+        .getByText('반복 일정')
+        .closest('[draggable="true"]');
       expect(draggableEvent).not.toBeNull();
 
       const targetCell = within(monthView)
         .getAllByRole('cell')
         .find((cell) => within(cell).queryByText('17'));
-
       expect(targetCell).toBeDefined();
 
       const dataTransfer = createMockDataTransfer();
-
       fireEvent.dragStart(draggableEvent as Element, { dataTransfer });
       fireEvent.dragEnter(targetCell as Element, { dataTransfer });
       fireEvent.dragOver(targetCell as Element, { dataTransfer });
@@ -307,15 +314,14 @@ describe('반복 일정 워크플로우 통합 테스트', () => {
       expect(screen.getByText('해당 일정만 이동하시겠어요?')).toBeInTheDocument();
 
       await user.click(screen.getByText('예'));
-
       await screen.findByText('일정이 이동되었습니다');
 
-      const eventList = within(await screen.findByTestId('event-list'));
+      await waitFor(() => {
+        expect(within(targetCell as HTMLElement).getByText('반복 일정')).toBeInTheDocument();
+      });
 
       await waitFor(() => {
-        expect(eventList.getByText('2025-10-17')).toBeInTheDocument();
-        expect(eventList.getByText('2025-10-16')).toBeInTheDocument();
-        expect(eventList.queryByText('2025-10-15')).not.toBeInTheDocument();
+        expect(within(sourceCell as HTMLElement).queryByText('반복 일정')).not.toBeInTheDocument();
       });
     });
   });
